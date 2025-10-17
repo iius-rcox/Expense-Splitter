@@ -70,8 +70,10 @@ build/
 # Environment variables
 .env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 
 # Database files
@@ -102,3 +104,11 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Docker
+.dockerignore
+*.dockerfile
+docker-compose.override.yml
+
+# Backups
+backups/

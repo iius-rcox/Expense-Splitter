@@ -574,7 +574,7 @@ CREATE TABLE sessions (
 ### NFR1: Performance
 
 **Target Metrics:**
-- PDF upload validation: <2 seconds for 50MB file
+- PDF upload validation: <2 seconds for 300MB file
 - Transaction extraction: <30 seconds for 100 transactions
 - Matching algorithm: <10 seconds for 100 transaction pairs
 - PDF splitting: <5 seconds per matched pair

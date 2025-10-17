@@ -1974,7 +1974,7 @@ After Phase 1 is complete, Phase 2 will implement:
 - **Solution**: CORS middleware configured in FastAPI to allow localhost:5173
 
 **Challenge 2**: Large file uploads timing out
-- **Solution**: Current limit is 50MB which is reasonable. If needed, increase FastAPI body limits and implement chunked uploads.
+- **Solution**: Current limit is 300MB which is reasonable. If needed, increase FastAPI body limits and implement chunked uploads.
 
 **Challenge 3**: PDF validation false negatives (rejecting valid PDFs)
 - **Solution**: Test with variety of real-world CAR and receipt PDFs. Adjust validation logic as needed.

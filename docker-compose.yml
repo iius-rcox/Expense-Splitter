@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Backend service (FastAPI)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: expense-splitter-backend-dev
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Hot-reload: mount source code
+      - ./backend:/app
+      # Persistent data volumes
+      - ./data:/data
+      - ./uploads:/uploads
+      - ./exports:/exports
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/expense_matcher.db}
+      - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-true}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:5173"]}
+      - UPLOAD_DIR=/uploads
+      - EXPORT_DIR=/exports
+      - DATA_DIR=/data
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+    env_file:
+      - .env.development
+    # Development mode: hot-reload enabled
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - expense-splitter
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend service (Nginx serving built React app)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: expense-splitter-frontend-dev
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+    networks:
+      - expense-splitter
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  expense-splitter:
+    driver: bridge

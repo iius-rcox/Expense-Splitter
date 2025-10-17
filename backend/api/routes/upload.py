@@ -96,11 +96,18 @@ async def upload_receipt_pdf(
     Raises:
         HTTPException: If validation fails (400) or server error (500)
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
+        logger.info(f"Received receipt upload: {file.filename}")
+
         # Save and validate file
         file_path, filename, page_count, file_size = await pdf_service.save_uploaded_file(
             file, pdf_type="receipt"
         )
+
+        logger.info(f"Receipt validation passed: {filename}, {page_count} pages, {file_size} bytes")
 
         # Create database record
         pdf_record = PDF(
@@ -115,6 +122,8 @@ async def upload_receipt_pdf(
         db.commit()
         db.refresh(pdf_record)
 
+        logger.info(f"Receipt PDF saved to database: {pdf_record.id}")
+
         # Return response
         return PDFUploadResponse(
             pdf_id=pdf_record.id,
@@ -127,6 +136,7 @@ async def upload_receipt_pdf(
 
     except ServicePDFValidationError as e:
         # Validation error - return 400
+        logger.error(f"Receipt validation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -137,6 +147,7 @@ async def upload_receipt_pdf(
         )
     except Exception as e:
         # Unexpected error - cleanup and return 500
+        logger.error(f"Unexpected error during receipt upload: {str(e)}", exc_info=True)
         if 'file_path' in locals():
             pdf_service.delete_file(file_path)
 

@@ -1,12 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { UploadZone } from '@/features/upload/components/UploadZone';
 import { useUploadCarPDF, useUploadReceiptPDF } from '@/features/upload/hooks/useUploadQueries';
 import { PDFUploadResponse } from '@/features/upload/types/upload';
 import { getErrorMessage } from '@/features/shared/api/apiClient';
 
 export default function UploadPage() {
+  const navigate = useNavigate();
   const [carUpload, setCarUpload] = useState<PDFUploadResponse | null>(null);
   const [receiptUpload, setReceiptUpload] = useState<PDFUploadResponse | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
 
   const carMutation = useUploadCarPDF();
   const receiptMutation = useUploadReceiptPDF();
@@ -39,6 +44,28 @@ export default function UploadPage() {
 
   const canProceed = carUpload && receiptUpload;
 
+  const handleExtractTransactions = async () => {
+    if (!carUpload || !receiptUpload) return;
+
+    setExtracting(true);
+    setExtractError(null);
+
+    try {
+      // Extract from CAR PDF
+      await axios.post(`http://localhost:8000/api/extract/pdf/${carUpload.pdf_id}`);
+
+      // Extract from receipt PDF
+      await axios.post(`http://localhost:8000/api/extract/pdf/${receiptUpload.pdf_id}`);
+
+      // Navigate to matching page
+      navigate('/matching');
+    } catch (err: any) {
+      setExtractError(err.response?.data?.detail?.message || 'Error extracting transactions');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto">
@@ -70,16 +97,17 @@ export default function UploadPage() {
         </div>
 
         {canProceed && (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             <button
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-              onClick={() => {
-                console.log('Ready to extract transactions', { carUpload, receiptUpload });
-                // TODO: Navigate to extraction page (Phase 2)
-              }}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleExtractTransactions}
+              disabled={extracting}
             >
-              Continue to Extract Transactions
+              {extracting ? 'Extracting Transactions...' : 'Continue to Extract Transactions'}
             </button>
+            {extractError && (
+              <div className="text-sm text-destructive">{extractError}</div>
+            )}
           </div>
         )}
       </div>

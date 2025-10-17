@@ -10,7 +10,7 @@ backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from models.base import create_tables
-from api.routes import upload, health
+from api.routes import upload, health, extraction, matching, export
 
 
 @asynccontextmanager
@@ -56,6 +56,9 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router)
 app.include_router(upload.router)
+app.include_router(extraction.router)
+app.include_router(matching.router)
+app.include_router(export.router)
 
 
 if __name__ == "__main__":

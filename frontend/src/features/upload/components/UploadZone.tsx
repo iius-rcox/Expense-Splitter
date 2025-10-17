@@ -112,7 +112,7 @@ export function UploadZone({
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Max 50MB, 500 pages
+                Max 300MB, 1500 pages
               </p>
             </div>
           )}

@@ -15,8 +15,8 @@ class PDFService:
     """Service for handling PDF uploads and validation."""
 
     # Constants
-    MAX_FILE_SIZE_MB = 50
-    MAX_PAGE_COUNT = 500
+    MAX_FILE_SIZE_MB = 300
+    MAX_PAGE_COUNT = 1500
     MIN_PAGE_COUNT = 1
     UPLOAD_DIR = Path("uploads")
 

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, status
 from sqlalchemy import text
 from models.base import SessionLocal
+from pathlib import Path
+from datetime import datetime
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -8,26 +10,53 @@ router = APIRouter(prefix="/api", tags=["health"])
 @router.get("/health", status_code=status.HTTP_200_OK)
 def health_check():
     """
-    Health check endpoint.
+    Health check endpoint for container orchestration and monitoring.
 
     Verifies:
     - API is running
     - Database connection works
+    - Required directories exist and are writable
 
     Returns:
-        Status message with database connectivity
+        Status message with component health checks
     """
+    health_status = {
+        "status": "healthy",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
+    }
+
+    # Test database connection
     try:
-        # Test database connection
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db.close()
-        db_status = "connected"
+        health_status["checks"]["database"] = "connected"
     except Exception as e:
-        db_status = f"error: {str(e)}"
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["database"] = f"error: {str(e)}"
 
-    return {
-        "status": "healthy",
-        "database": db_status,
-        "version": "1.0.0"
+    # Check required directories exist and are writable
+    required_dirs = {
+        "data": Path("data"),
+        "uploads": Path("uploads"),
+        "exports": Path("exports")
     }
+
+    for name, path in required_dirs.items():
+        if path.exists() and path.is_dir():
+            # Check if writable
+            test_file = path / ".health_check"
+            try:
+                test_file.touch()
+                test_file.unlink()
+                health_status["checks"][f"dir_{name}"] = "ok"
+            except Exception:
+                health_status["status"] = "unhealthy"
+                health_status["checks"][f"dir_{name}"] = "not_writable"
+        else:
+            health_status["status"] = "unhealthy"
+            health_status["checks"][f"dir_{name}"] = "missing"
+
+    return health_status
