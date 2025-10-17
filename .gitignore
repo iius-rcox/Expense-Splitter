@@ -1,0 +1,7 @@
+# Archcon Files
+prp-*
+archon-*
+
+Claude Files
+.claude/
+CLAUDE.md
