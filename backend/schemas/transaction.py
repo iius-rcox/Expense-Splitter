@@ -65,6 +65,7 @@ class TransactionListResponse(BaseModel):
     car_count: int
     receipt_count: int
     unmatched_count: int
+    duplicates_skipped: int = 0  # NEW field for deduplication
 
     class Config:
         json_schema_extra = {
@@ -73,7 +74,8 @@ class TransactionListResponse(BaseModel):
                 "total_count": 50,
                 "car_count": 25,
                 "receipt_count": 25,
-                "unmatched_count": 10
+                "unmatched_count": 10,
+                "duplicates_skipped": 0
             }
         }
 

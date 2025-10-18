@@ -4,8 +4,10 @@ from typing import Literal
 
 from models.base import get_db
 from models.pdf import PDF
+from models.transaction import Transaction
 from schemas.pdf import PDFUploadResponse, PDFValidationError
 from services.pdf_service import pdf_service, PDFValidationError as ServicePDFValidationError
+from services.deduplication_service import deduplication_service
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -27,15 +29,58 @@ async def upload_car_pdf(
         HTTPException: If validation fails (400) or server error (500)
     """
     try:
-        # Save and validate file
-        file_path, filename, page_count, file_size = await pdf_service.save_uploaded_file(
+        # Save and validate file (now includes hash)
+        file_path, filename, page_count, file_size, file_hash = await pdf_service.save_uploaded_file(
             file, pdf_type="car"
         )
 
-        # Create database record
+        # Check for duplicate BEFORE creating record
+        duplicate_pdf = deduplication_service.check_duplicate_pdf(file_hash, db)
+
+        if duplicate_pdf:
+            # Delete newly saved file (it's a duplicate)
+            pdf_service.delete_file(file_path)
+
+            # Count existing transactions
+            transaction_count = db.query(Transaction).filter(
+                Transaction.pdf_id == duplicate_pdf.id
+            ).count()
+
+            # Return 409 Conflict with actionable information
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "duplicate_pdf",
+                    "message": f"This PDF has already been uploaded as '{duplicate_pdf.filename}'.",
+                    "duplicate_pdf": {
+                        "pdf_id": duplicate_pdf.id,
+                        "filename": duplicate_pdf.filename,
+                        "uploaded_at": duplicate_pdf.uploaded_at.isoformat(),
+                        "transaction_count": transaction_count,
+                        "pdf_type": duplicate_pdf.pdf_type
+                    },
+                    "actions": [
+                        {
+                            "action": "view_transactions",
+                            "description": "View existing transactions",
+                            "endpoint": f"/api/extract/transactions?pdf_id={duplicate_pdf.id}"
+                        },
+                        {
+                            "action": "force_reextract",
+                            "description": "Delete existing data and re-extract",
+                            "endpoint": f"/api/extract/force/{duplicate_pdf.id}",
+                            "method": "POST",
+                            "warning": "This will delete existing unmatched transactions"
+                        }
+                    ]
+                }
+            )
+
+        # Create new PDF record with hash
         pdf_record = PDF(
             filename=filename,
             file_path=str(file_path.absolute()),
+            file_hash=file_hash,  # NEW
             pdf_type="car",
             page_count=page_count,
             file_size_bytes=file_size
@@ -102,17 +147,60 @@ async def upload_receipt_pdf(
     try:
         logger.info(f"Received receipt upload: {file.filename}")
 
-        # Save and validate file
-        file_path, filename, page_count, file_size = await pdf_service.save_uploaded_file(
+        # Save and validate file (now includes hash)
+        file_path, filename, page_count, file_size, file_hash = await pdf_service.save_uploaded_file(
             file, pdf_type="receipt"
         )
 
         logger.info(f"Receipt validation passed: {filename}, {page_count} pages, {file_size} bytes")
 
-        # Create database record
+        # Check for duplicate BEFORE creating record
+        duplicate_pdf = deduplication_service.check_duplicate_pdf(file_hash, db)
+
+        if duplicate_pdf:
+            # Delete newly saved file (it's a duplicate)
+            pdf_service.delete_file(file_path)
+
+            # Count existing transactions
+            transaction_count = db.query(Transaction).filter(
+                Transaction.pdf_id == duplicate_pdf.id
+            ).count()
+
+            # Return 409 Conflict with actionable information
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "duplicate_pdf",
+                    "message": f"This PDF has already been uploaded as '{duplicate_pdf.filename}'.",
+                    "duplicate_pdf": {
+                        "pdf_id": duplicate_pdf.id,
+                        "filename": duplicate_pdf.filename,
+                        "uploaded_at": duplicate_pdf.uploaded_at.isoformat(),
+                        "transaction_count": transaction_count,
+                        "pdf_type": duplicate_pdf.pdf_type
+                    },
+                    "actions": [
+                        {
+                            "action": "view_transactions",
+                            "description": "View existing transactions",
+                            "endpoint": f"/api/extract/transactions?pdf_id={duplicate_pdf.id}"
+                        },
+                        {
+                            "action": "force_reextract",
+                            "description": "Delete existing data and re-extract",
+                            "endpoint": f"/api/extract/force/{duplicate_pdf.id}",
+                            "method": "POST",
+                            "warning": "This will delete existing unmatched transactions"
+                        }
+                    ]
+                }
+            )
+
+        # Create new PDF record with hash
         pdf_record = PDF(
             filename=filename,
             file_path=str(file_path.absolute()),
+            file_hash=file_hash,  # NEW
             pdf_type="receipt",
             page_count=page_count,
             file_size_bytes=file_size

@@ -10,7 +10,7 @@ backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from models.base import create_tables
-from api.routes import upload, health, extraction, matching, export
+from api.routes import upload, health, extraction, matching, export, deduplication
 
 
 @asynccontextmanager
@@ -39,8 +39,15 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="PDF Transaction Matcher API",
-    description="Backend API for matching CAR transactions with receipt PDFs",
-    version="1.0.0",
+    description="""
+    Extract, match, and split PDF transactions.
+
+    **New in v1.1: Deduplication**
+    - Automatic detection of duplicate PDFs
+    - Transaction-level deduplication
+    - Force re-extraction capability
+    """,
+    version="1.1.0",
     lifespan=lifespan
 )
 
@@ -59,6 +66,7 @@ app.include_router(upload.router)
 app.include_router(extraction.router)
 app.include_router(matching.router)
 app.include_router(export.router)
+app.include_router(deduplication.router)
 
 
 if __name__ == "__main__":

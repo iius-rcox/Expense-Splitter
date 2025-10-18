@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text
+from sqlalchemy import Column, String, Integer, DateTime, Text, Index, UniqueConstraint
 from sqlalchemy.sql import func
 from .base import Base
 import uuid
@@ -24,8 +24,16 @@ class PDF(Base):
     page_count = Column(Integer, nullable=False)
     file_size_bytes = Column(Integer, nullable=False)
 
+    # Deduplication
+    file_hash = Column(String(64), nullable=True, index=True)  # SHA-256 hash of file content
+
     # Timestamps
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Table constraints
+    __table_args__ = (
+        UniqueConstraint('file_hash', name='uq_pdf_file_hash'),
+    )
 
     def __repr__(self):
         return f"<PDF(id={self.id}, type={self.pdf_type}, filename={self.filename})>"
@@ -39,5 +47,6 @@ class PDF(Base):
             "pdf_type": self.pdf_type,
             "page_count": self.page_count,
             "file_size_bytes": self.file_size_bytes,
+            "file_hash": self.file_hash,
             "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None
         }
