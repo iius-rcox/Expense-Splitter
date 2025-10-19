@@ -5,6 +5,7 @@ from typing import Literal, Tuple, Optional
 from sqlalchemy.orm import Session
 import shutil
 import uuid
+import os
 
 
 class PDFValidationError(Exception):
@@ -19,7 +20,7 @@ class PDFService:
     MAX_FILE_SIZE_MB = 300
     MAX_PAGE_COUNT = 1500
     MIN_PAGE_COUNT = 1
-    UPLOAD_DIR = Path("uploads")
+    UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 
     def __init__(self):
         """Initialize PDF service and ensure upload directory exists."""

@@ -75,7 +75,7 @@ async def extract_pdf_transactions(
         for trans in extracted:
             # Calculate fingerprint
             trans_data = {
-                'date': trans.date.date() if trans.date else None,
+                'date': trans.date,  # Already a date object from extraction service
                 'amount': trans.amount,
                 'employee_id': trans.employee_id,
                 'transaction_type': trans.transaction_type
@@ -100,7 +100,7 @@ async def extract_pdf_transactions(
             transaction = Transaction(
                 pdf_id=pdf_id,
                 transaction_type=trans.transaction_type,
-                date=trans.date.date() if trans.date else None,  # Convert to date
+                date=trans.date,  # Already a date object from extraction service
                 amount=trans.amount,
                 employee_id=trans.employee_id,
                 employee_name=trans.employee_name,

@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+import traceback
+import logging
 
 import sys
 from pathlib import Path
@@ -11,6 +14,19 @@ sys.path.insert(0, str(backend_dir))
 
 from models.base import create_tables
 from api.routes import upload, health, extraction, matching, export, deduplication
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Changed from DEBUG
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Reduce verbosity of third-party libraries
+logging.getLogger('pdfminer').setLevel(logging.WARNING)
+logging.getLogger('PIL').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -50,6 +66,25 @@ app = FastAPI(
     version="1.1.0",
     lifespan=lifespan
 )
+
+# Add exception handler middleware for debugging
+@app.middleware("http")
+async def log_exceptions(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        logger.error(f"Unhandled exception: {type(e).__name__}: {e}")
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": "server_error",
+                "message": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        )
 
 # Configure CORS (allow frontend to make requests)
 app.add_middleware(
