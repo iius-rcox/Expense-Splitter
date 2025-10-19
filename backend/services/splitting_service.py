@@ -3,6 +3,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from typing import List, Tuple
 from datetime import datetime
 import uuid
+import os
 
 
 class SplittingError(Exception):
@@ -13,7 +14,7 @@ class SplittingError(Exception):
 class SplittingService:
     """Service for splitting and combining PDFs based on matches."""
 
-    EXPORT_DIR = Path("exports")
+    EXPORT_DIR = Path(os.getenv("EXPORT_DIR", "exports"))
 
     def __init__(self):
         """Initialize splitting service and ensure export directory exists."""

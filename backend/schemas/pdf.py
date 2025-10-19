@@ -12,6 +12,9 @@ class PDFUploadResponse(BaseModel):
     page_count: int = Field(..., description="Number of pages in PDF", ge=1)
     file_size_bytes: int = Field(..., description="File size in bytes", ge=1)
     uploaded_at: datetime = Field(..., description="Upload timestamp")
+    is_duplicate: bool = Field(default=False, description="Whether this is a duplicate upload")
+    transaction_count: int = Field(default=0, description="Number of transactions already extracted")
+    matches_cleared: int = Field(default=0, description="Number of matches cleared for re-processing")
 
     class Config:
         json_schema_extra = {

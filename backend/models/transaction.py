@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, Float, DateTime, Date, Text, ForeignKey, Boolean, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .base import Base
@@ -17,15 +17,15 @@ class Transaction(Base):
     # Primary key (UUID as string)
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    # Link to source PDF
-    pdf_id = Column(String(36), ForeignKey("pdfs.id"), nullable=False)
+    # Link to source PDF (with cascade delete)
+    pdf_id = Column(String(36), ForeignKey("pdfs.id", ondelete="CASCADE"), nullable=False)
     pdf = relationship("PDF", backref="transactions")
 
     # Transaction type
     transaction_type = Column(String(10), nullable=False)  # 'car' or 'receipt'
 
     # Core transaction data
-    date = Column(DateTime(timezone=False), nullable=True)  # Transaction date
+    date = Column(Date, nullable=True)  # Transaction date (changed to Date for day-level deduplication)
     amount = Column(Float, nullable=True)  # Transaction amount in dollars
     employee_id = Column(String(50), nullable=True)  # Employee ID
     employee_name = Column(String(255), nullable=True)  # Employee name
@@ -43,6 +43,11 @@ class Transaction(Base):
     # Raw extracted text (for debugging/manual review)
     raw_text = Column(Text, nullable=True)
 
+    # Deduplication fields
+    content_fingerprint = Column(String(64), nullable=True, index=True)  # SHA-256 of business key
+    is_duplicate = Column(Boolean, default=False)  # Flag for detected duplicates
+    duplicate_of_id = Column(String(36), ForeignKey("transactions.id"), nullable=True)  # Reference to original
+
     # Extraction metadata
     extraction_confidence = Column(Float, nullable=True)  # 0.0 to 1.0 confidence score
     extracted_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -53,6 +58,15 @@ class Transaction(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Table constraints
+    __table_args__ = (
+        UniqueConstraint(
+            'date', 'amount', 'employee_id', 'transaction_type',
+            name='uq_transaction_content'
+        ),
+        Index('idx_content_fingerprint', 'content_fingerprint'),
+    )
 
     def __repr__(self):
         return (
@@ -75,6 +89,9 @@ class Transaction(Base):
             "receipt_id": self.receipt_id,
             "page_number": self.page_number,
             "raw_text": self.raw_text,
+            "content_fingerprint": self.content_fingerprint,
+            "is_duplicate": self.is_duplicate,
+            "duplicate_of_id": self.duplicate_of_id,
             "extraction_confidence": self.extraction_confidence,
             "is_matched": self.is_matched,
             "extracted_at": self.extracted_at.isoformat() if self.extracted_at else None,

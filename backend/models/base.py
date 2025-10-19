@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from typing import Generator
@@ -15,6 +15,14 @@ engine = create_engine(
     connect_args={"check_same_thread": False},  # Needed for SQLite
     echo=True,  # Log SQL queries (disable in production)
 )
+
+# Enable foreign key constraints for SQLite (required for CASCADE deletes)
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """Enable foreign key constraints in SQLite."""
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 # Session maker
 SessionLocal = sessionmaker(

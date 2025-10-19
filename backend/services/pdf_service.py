@@ -1,9 +1,11 @@
 from pathlib import Path
 import pdfplumber
 from PyPDF2 import PdfReader
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Optional
+from sqlalchemy.orm import Session
 import shutil
 import uuid
+import os
 
 
 class PDFValidationError(Exception):
@@ -18,7 +20,7 @@ class PDFService:
     MAX_FILE_SIZE_MB = 300
     MAX_PAGE_COUNT = 1500
     MIN_PAGE_COUNT = 1
-    UPLOAD_DIR = Path("uploads")
+    UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 
     def __init__(self):
         """Initialize PDF service and ensure upload directory exists."""
@@ -140,7 +142,7 @@ class PDFService:
         self,
         file,  # FastAPI UploadFile
         pdf_type: Literal["car", "receipt"]
-    ) -> Tuple[Path, str, int, int]:
+    ) -> Tuple[Path, str, int, int, str]:
         """
         Save uploaded file to disk with validation.
 
@@ -149,11 +151,20 @@ class PDFService:
             pdf_type: Type of PDF ('car' or 'receipt')
 
         Returns:
-            Tuple of (file_path, filename, page_count, file_size_bytes)
+            Tuple of (file_path, filename, page_count, file_size_bytes, file_hash)
 
         Raises:
             PDFValidationError: If validation fails
         """
+        # Import here to avoid circular dependency
+        from services.deduplication_service import deduplication_service
+
+        # Read file content first (needed for hash calculation)
+        file_content = await file.read()
+
+        # Calculate hash before any other operations
+        file_hash = deduplication_service.calculate_file_hash_from_bytes(file_content)
+
         # Generate unique filename
         file_id = str(uuid.uuid4())
         original_filename = file.filename
@@ -174,7 +185,7 @@ class PDFService:
         # Save file
         try:
             with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+                buffer.write(file_content)
         except Exception as e:
             raise PDFValidationError(f"Failed to save file: {str(e)}")
 
@@ -187,7 +198,22 @@ class PDFService:
         # Validate text extractability
         self.validate_text_extractable(file_path)
 
-        return file_path, original_filename, page_count, file_size
+        return file_path, original_filename, page_count, file_size, file_hash
+
+    def find_duplicate_pdf(self, file_hash: str, db: Session) -> Optional['PDF']:
+        """
+        Find PDF by hash.
+
+        Args:
+            file_hash: SHA-256 hash of PDF content
+            db: Database session
+
+        Returns:
+            Existing PDF record if found, None otherwise
+        """
+        from services.deduplication_service import deduplication_service
+        from models.pdf import PDF
+        return deduplication_service.check_duplicate_pdf(file_hash, db)
 
     def delete_file(self, file_path: Path):
         """Delete uploaded file (cleanup on error)."""

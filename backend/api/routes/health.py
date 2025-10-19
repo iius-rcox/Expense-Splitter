@@ -3,6 +3,7 @@ from sqlalchemy import text
 from models.base import SessionLocal
 from pathlib import Path
 from datetime import datetime
+import os
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -39,9 +40,9 @@ def health_check():
 
     # Check required directories exist and are writable
     required_dirs = {
-        "data": Path("data"),
-        "uploads": Path("uploads"),
-        "exports": Path("exports")
+        "dir_data": Path(os.getenv("DATA_DIR", "data")),
+        "dir_uploads": Path(os.getenv("UPLOAD_DIR", "uploads")),
+        "dir_exports": Path(os.getenv("EXPORT_DIR", "exports"))
     }
 
     for name, path in required_dirs.items():

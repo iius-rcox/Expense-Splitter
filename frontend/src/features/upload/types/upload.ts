@@ -19,6 +19,9 @@ export interface PDFUploadResponse {
   page_count: number;
   file_size_bytes: number;
   uploaded_at: string;  // ISO timestamp
+  is_duplicate?: boolean;  // Whether this is a duplicate upload
+  transaction_count?: number;  // Number of transactions already extracted
+  matches_cleared?: number;  // Number of matches cleared for re-processing
 }
 
 /** API error response */

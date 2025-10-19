@@ -20,6 +20,12 @@ export default function UploadPage() {
     carMutation.mutate(file, {
       onSuccess: (data) => {
         setCarUpload(data);
+
+        // If duplicate upload and both PDFs ready, go directly to matching
+        if (data.is_duplicate && receiptUpload) {
+          // Both PDFs uploaded and at least one is duplicate
+          navigate('/matching');
+        }
       },
     });
   };
@@ -28,6 +34,12 @@ export default function UploadPage() {
     receiptMutation.mutate(file, {
       onSuccess: (data) => {
         setReceiptUpload(data);
+
+        // If duplicate upload and both PDFs ready, go directly to matching
+        if (data.is_duplicate && carUpload) {
+          // Both PDFs uploaded and at least one is duplicate
+          navigate('/matching');
+        }
       },
     });
   };

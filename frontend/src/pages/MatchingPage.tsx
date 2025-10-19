@@ -1,26 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Transaction, Match } from '../features/transactions/types/transaction';
+import { formatDate, formatCurrency } from '../lib/utils/dateFormat';
 
 const API_BASE = 'http://localhost:8000';
-
-interface Transaction {
-  transaction_id: string;
-  transaction_type: 'car' | 'receipt';
-  date: string | null;
-  amount: number | null;
-  employee_id: string | null;
-  merchant: string | null;
-  is_matched: boolean;
-}
-
-interface Match {
-  match_id: string;
-  confidence_score: number;
-  status: string;
-  exported: boolean;
-  car_transaction: Transaction;
-  receipt_transaction: Transaction;
-}
 
 export default function MatchingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -183,23 +166,47 @@ export default function MatchingPage() {
                   <div className="grid grid-cols-2 gap-6">
                     {/* CAR Transaction */}
                     <div>
-                      <div className="text-sm font-semibold mb-2 text-blue-600">CAR Transaction</div>
-                      <div className="space-y-1 text-sm">
-                        <div><span className="font-medium">Date:</span> {match.car_transaction.date || 'N/A'}</div>
-                        <div><span className="font-medium">Amount:</span> ${match.car_transaction.amount?.toFixed(2) || 'N/A'}</div>
-                        <div><span className="font-medium">Employee:</span> {match.car_transaction.employee_id || 'N/A'}</div>
+                      <div className="text-sm font-semibold mb-3 text-blue-600">CAR Transaction</div>
+                      <div className="space-y-1.5 text-sm">
+                        <div><span className="font-medium">Date:</span> {formatDate(match.car_transaction.date)}</div>
+                        <div><span className="font-medium">Amount:</span> {formatCurrency(match.car_transaction.amount)}</div>
+                        <div><span className="font-medium">Employee ID:</span> {match.car_transaction.employee_id || 'N/A'}</div>
+                        {match.car_transaction.employee_name && (
+                          <div><span className="font-medium">Employee Name:</span> {match.car_transaction.employee_name}</div>
+                        )}
                         <div><span className="font-medium">Merchant:</span> {match.car_transaction.merchant || 'N/A'}</div>
+                        {match.car_transaction.card_number && (
+                          <div><span className="font-medium">Card:</span> {match.car_transaction.card_number}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          Page: {match.car_transaction.page_number}
+                          {match.car_transaction.extraction_confidence && (
+                            <> • Confidence: {(match.car_transaction.extraction_confidence * 100).toFixed(0)}%</>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Receipt Transaction */}
                     <div>
-                      <div className="text-sm font-semibold mb-2 text-green-600">Receipt Transaction</div>
-                      <div className="space-y-1 text-sm">
-                        <div><span className="font-medium">Date:</span> {match.receipt_transaction.date || 'N/A'}</div>
-                        <div><span className="font-medium">Amount:</span> ${match.receipt_transaction.amount?.toFixed(2) || 'N/A'}</div>
-                        <div><span className="font-medium">Employee:</span> {match.receipt_transaction.employee_id || 'N/A'}</div>
+                      <div className="text-sm font-semibold mb-3 text-green-600">Receipt Transaction</div>
+                      <div className="space-y-1.5 text-sm">
+                        <div><span className="font-medium">Date:</span> {formatDate(match.receipt_transaction.date)}</div>
+                        <div><span className="font-medium">Amount:</span> {formatCurrency(match.receipt_transaction.amount)}</div>
+                        <div><span className="font-medium">Employee ID:</span> {match.receipt_transaction.employee_id || 'N/A'}</div>
+                        {match.receipt_transaction.employee_name && (
+                          <div><span className="font-medium">Employee Name:</span> {match.receipt_transaction.employee_name}</div>
+                        )}
                         <div><span className="font-medium">Merchant:</span> {match.receipt_transaction.merchant || 'N/A'}</div>
+                        {match.receipt_transaction.receipt_id && (
+                          <div><span className="font-medium">Receipt ID:</span> {match.receipt_transaction.receipt_id}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          Page: {match.receipt_transaction.page_number}
+                          {match.receipt_transaction.extraction_confidence && (
+                            <> • Confidence: {(match.receipt_transaction.extraction_confidence * 100).toFixed(0)}%</>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -216,12 +223,30 @@ export default function MatchingPage() {
             <div className="grid grid-cols-2 gap-6">
               {/* CAR */}
               <div>
-                <h3 className="text-lg font-semibold mb-2 text-blue-600">CAR ({carUnmatched.length})</h3>
-                <div className="space-y-2">
+                <h3 className="text-lg font-semibold mb-3 text-blue-600">CAR ({carUnmatched.length})</h3>
+                <div className="space-y-3">
                   {carUnmatched.map(t => (
-                    <div key={t.transaction_id} className="bg-card p-3 rounded border text-sm">
-                      <div>{t.date || 'No date'} - ${t.amount?.toFixed(2) || 'N/A'}</div>
-                      <div className="text-muted-foreground">{t.merchant || 'No merchant'}</div>
+                    <div key={t.transaction_id} className="bg-card p-4 rounded-lg border hover:border-blue-300 transition-colors">
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between items-start">
+                          <span className="font-semibold">{formatDate(t.date)}</span>
+                          <span className="font-bold text-base">{formatCurrency(t.amount)}</span>
+                        </div>
+                        <div><span className="font-medium">Merchant:</span> {t.merchant || 'N/A'}</div>
+                        <div><span className="font-medium">Employee ID:</span> {t.employee_id || 'N/A'}</div>
+                        {t.employee_name && (
+                          <div><span className="font-medium">Employee:</span> {t.employee_name}</div>
+                        )}
+                        {t.card_number && (
+                          <div><span className="font-medium">Card:</span> {t.card_number}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground pt-1 border-t">
+                          Page: {t.page_number}
+                          {t.extraction_confidence && (
+                            <> • Confidence: {(t.extraction_confidence * 100).toFixed(0)}%</>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -229,12 +254,30 @@ export default function MatchingPage() {
 
               {/* Receipt */}
               <div>
-                <h3 className="text-lg font-semibold mb-2 text-green-600">Receipt ({receiptUnmatched.length})</h3>
-                <div className="space-y-2">
+                <h3 className="text-lg font-semibold mb-3 text-green-600">Receipt ({receiptUnmatched.length})</h3>
+                <div className="space-y-3">
                   {receiptUnmatched.map(t => (
-                    <div key={t.transaction_id} className="bg-card p-3 rounded border text-sm">
-                      <div>{t.date || 'No date'} - ${t.amount?.toFixed(2) || 'N/A'}</div>
-                      <div className="text-muted-foreground">{t.merchant || 'No merchant'}</div>
+                    <div key={t.transaction_id} className="bg-card p-4 rounded-lg border hover:border-green-300 transition-colors">
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between items-start">
+                          <span className="font-semibold">{formatDate(t.date)}</span>
+                          <span className="font-bold text-base">{formatCurrency(t.amount)}</span>
+                        </div>
+                        <div><span className="font-medium">Merchant:</span> {t.merchant || 'N/A'}</div>
+                        <div><span className="font-medium">Employee ID:</span> {t.employee_id || 'N/A'}</div>
+                        {t.employee_name && (
+                          <div><span className="font-medium">Employee:</span> {t.employee_name}</div>
+                        )}
+                        {t.receipt_id && (
+                          <div><span className="font-medium">Receipt ID:</span> {t.receipt_id}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground pt-1 border-t">
+                          Page: {t.page_number}
+                          {t.extraction_confidence && (
+                            <> • Confidence: {(t.extraction_confidence * 100).toFixed(0)}%</>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

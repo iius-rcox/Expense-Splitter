@@ -149,7 +149,7 @@ class ExtractionService:
 
         date_str = date_matches[0]  # First date is Trans Date
         try:
-            transaction_date = datetime.strptime(date_str, '%m/%d/%Y')
+            transaction_date = datetime.strptime(date_str, '%m/%d/%Y').date()
         except ValueError:
             transaction_date = None
 
@@ -255,7 +255,7 @@ class ExtractionService:
             # Try multiple date formats
             for fmt in ['%m/%d/%Y', '%m/%d/%y', '%d/%m/%Y', '%d/%m/%y']:
                 try:
-                    transaction_date = datetime.strptime(date_str, fmt)
+                    transaction_date = datetime.strptime(date_str, fmt).date()
                     break
                 except ValueError:
                     continue
